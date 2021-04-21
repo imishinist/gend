@@ -1,15 +1,17 @@
 package definition
 
-type Target map[string][]string
-
-func New() Target {
-	return make(map[string][]string)
+type TargetKV struct {
+	Key    string   `json:"key"`
+	Values []string `json:"values"`
 }
 
-func (t Target) Add(key string, value string) {
-	if _, ok := t[key]; !ok {
-		t[key] = []string{value}
-		return
+func NewTarget(key string) *TargetKV {
+	return &TargetKV{
+		Key:    key,
+		Values: make([]string, 0),
 	}
-	t[key] = append(t[key], value)
+}
+
+func (t *TargetKV) Add(value string) {
+	t.Values = append(t.Values, value)
 }

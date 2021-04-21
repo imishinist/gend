@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -41,8 +41,9 @@ func main() {
 	}
 	ctx := context.Background()
 
-	target := targetdef.New()
 	for _, rule := range conf.Rules {
+		target := targetdef.NewTarget(rule.Key)
+
 		length, err := generator.Length(rule.Length)
 		if err != nil {
 			continue
@@ -52,8 +53,13 @@ func main() {
 			if err != nil {
 				continue
 			}
-			target.Add(rule.Key, value)
+			target.Add(value)
 		}
+		res, err := generator.Generator(ctx, target, rule)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		fmt.Print(res)
 	}
-	json.NewEncoder(os.Stdout).Encode(target)
 }

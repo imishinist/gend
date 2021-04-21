@@ -20,7 +20,8 @@ var (
 	ErrFormatInvalid     = errors.New("invalid format")
 	ErrCommandDefinition = errors.New("command definition invalid")
 
-	ErrRunCommand = errors.New("run command failure")
+	ErrRunCommand      = errors.New("run command failure")
+	ErrTemplateInvalid = errors.New("template is invalid")
 )
 
 func Value(ctx context.Context, rule definition.Rule) (string, error) {
@@ -94,7 +95,7 @@ func genRangeInt(from, to int64) string {
 
 func generatorValue(ctx context.Context, key string, value definition.Value) (string, error) {
 	if value.Generator.Bash != "" {
-		command, clean := runAsBash(ctx, value.Generator.Bash)
+		command, clean := runAsBash(ctx, value.Generator.Bash, nil)
 		defer clean()
 
 		command.Stdin = bytes.NewBufferString(key)
@@ -108,13 +109,18 @@ func generatorValue(ctx context.Context, key string, value definition.Value) (st
 	return "", ErrCommandDefinition
 }
 
-func runAsBash(ctx context.Context, cmd string) (*exec.Cmd, func()) {
+func runAsBash(ctx context.Context, cmd string, variables map[string]string) (*exec.Cmd, func()) {
 	temp, err := os.CreateTemp(os.TempDir(), "")
 	if err != nil {
 		panic(err)
 	}
 	defer temp.Close()
 
+	if variables != nil {
+		for k, v := range variables {
+			io.WriteString(temp, fmt.Sprintf("%s=\"%s\"\n", k, v))
+		}
+	}
 	io.WriteString(temp, cmd)
 	return exec.CommandContext(ctx, "/bin/bash", temp.Name()), func() {
 		os.Remove(temp.Name())
