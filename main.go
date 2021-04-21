@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/imishinist/gend/rule/definition"
 	"github.com/imishinist/gend/rule/generator"
+	targetdef "github.com/imishinist/gend/target/definition"
 )
 
 func init() {
@@ -40,15 +41,19 @@ func main() {
 	}
 	ctx := context.Background()
 
+	target := targetdef.New()
 	for _, rule := range conf.Rules {
 		length, err := generator.Length(rule.Length)
 		if err != nil {
 			continue
 		}
-		value, err := generator.Value(ctx, rule.Value)
-		if err != nil {
-			continue
+		for i := 0; i < length; i++ {
+			value, err := generator.Value(ctx, rule)
+			if err != nil {
+				continue
+			}
+			target.Add(rule.Key, value)
 		}
-		fmt.Println(length, value)
 	}
+	json.NewEncoder(os.Stdout).Encode(target)
 }

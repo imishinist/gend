@@ -1,10 +1,14 @@
 package generator
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -12,11 +16,15 @@ import (
 )
 
 var (
-	ErrValueDefinition = errors.New("value definition invalid")
-	ErrFormatInvalid   = errors.New("invalid format")
+	ErrValueDefinition   = errors.New("value definition invalid")
+	ErrFormatInvalid     = errors.New("invalid format")
+	ErrCommandDefinition = errors.New("command definition invalid")
+
+	ErrRunCommand = errors.New("run command failure")
 )
 
-func Value(ctx context.Context, value definition.Value) (string, error) {
+func Value(ctx context.Context, rule definition.Rule) (string, error) {
+	value := rule.Value
 	if value.Static != "" {
 		return value.Static, nil
 	}
@@ -30,7 +38,11 @@ func Value(ctx context.Context, value definition.Value) (string, error) {
 	}
 
 	if value.Generator != nil {
-		// TODO
+		ret, err := generatorValue(ctx, rule.Key, rule.Value)
+		if err != nil {
+			return "", err
+		}
+		return ret, nil
 	}
 
 	return "", ErrValueDefinition
@@ -78,4 +90,33 @@ func genRangeInt(from, to int64) string {
 	diff := to - from
 	ret := from + rand.Int63n(diff)
 	return strconv.FormatInt(ret, 10)
+}
+
+func generatorValue(ctx context.Context, key string, value definition.Value) (string, error) {
+	if value.Generator.Bash != "" {
+		command, clean := runAsBash(ctx, value.Generator.Bash)
+		defer clean()
+
+		command.Stdin = bytes.NewBufferString(key)
+		output, err := command.Output()
+		if err != nil {
+			return "", ErrRunCommand
+		}
+		return string(output), nil
+	}
+
+	return "", ErrCommandDefinition
+}
+
+func runAsBash(ctx context.Context, cmd string) (*exec.Cmd, func()) {
+	temp, err := os.CreateTemp(os.TempDir(), "")
+	if err != nil {
+		panic(err)
+	}
+	defer temp.Close()
+
+	io.WriteString(temp, cmd)
+	return exec.CommandContext(ctx, "/bin/bash", temp.Name()), func() {
+		os.Remove(temp.Name())
+	}
 }

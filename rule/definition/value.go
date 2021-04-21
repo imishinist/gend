@@ -8,5 +8,5 @@ type Value struct {
 }
 
 type ValueGenerator struct {
-	Comand string `json:"command,omitempty" yaml:"command"`
+	Bash string `json:"bash,omitempty" yaml:"bash"`
 }
