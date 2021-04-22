@@ -5,4 +5,6 @@ type Rule struct {
 	Value     Value      `json:"value" yaml:"value"`
 	Length    Length     `json:"length" yaml:"length"`
 	Generator *Generator `json:"generator" yaml:"generator"`
+
+	Use *Use `json:"use" yaml:"use"`
 }

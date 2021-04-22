@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"text/template"
 
@@ -13,6 +14,9 @@ import (
 )
 
 func Generator(ctx context.Context, target *targetdef.TargetKV, rule definition.Rule) (string, error) {
+	if rule.Use != nil && !Use(*rule.Use) {
+		return "", errors.New("don't use")
+	}
 	if rule.Generator != nil {
 		if rule.Generator.Bash != "" {
 			cmd, clean := runAsBash(ctx, rule.Generator.Bash, map[string]string{

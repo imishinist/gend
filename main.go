@@ -46,18 +46,20 @@ func main() {
 
 		length, err := generator.Length(rule.Length)
 		if err != nil {
+			log.Println(rule.Key, err)
 			continue
 		}
 		for i := 0; i < length; i++ {
 			value, err := generator.Value(ctx, rule)
 			if err != nil {
+				log.Println(rule.Key, err)
 				continue
 			}
 			target.Add(value)
 		}
 		res, err := generator.Generator(ctx, target, rule)
 		if err != nil {
-			log.Println(err)
+			log.Println(rule.Key, err)
 			continue
 		}
 		fmt.Print(res)
