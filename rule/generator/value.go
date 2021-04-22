@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -34,7 +35,7 @@ func Value(ctx context.Context, rule definition.Rule) (string, error) {
 		return enumValue(value), nil
 	}
 
-	if value.Range[0] != "" && value.Range[1] != "" {
+	if value.Range != nil && len(value.Range) >= 2 {
 		return rangeValue(value)
 	}
 
@@ -57,6 +58,10 @@ func enumValue(value definition.Value) string {
 func rangeValue(value definition.Value) (string, error) {
 	from := value.Range[0]
 	to := value.Range[1]
+	step := "1"
+	if len(value.Range) == 3 {
+		step = value.Range[2]
+	}
 
 	if strings.Contains(from, ".") {
 		ffrom, err := strconv.ParseFloat(from, 64)
@@ -67,7 +72,11 @@ func rangeValue(value definition.Value) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to parse range.1 as float: %w", err)
 		}
-		return genRangeFloat(ffrom, fto), nil
+		fstep, err := strconv.ParseFloat(step, 64)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse range.1 as float: %w", err)
+		}
+		return genRangeFloat(ffrom, fto, fstep), nil
 	}
 
 	ifrom, err := strconv.ParseInt(from, 10, 64)
@@ -78,19 +87,25 @@ func rangeValue(value definition.Value) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to parse range.1 as int: %w", err)
 	}
-	return genRangeInt(ifrom, ito), nil
+	istep, err := strconv.ParseInt(step, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse range.1 as int: %w", err)
+	}
+	return genRangeInt(ifrom, ito, istep), nil
 }
 
-func genRangeFloat(from, to float64) string {
+func genRangeFloat(from, to, step float64) string {
 	t := rand.Float64()
 	ret := t*(to-from) + from
-	return fmt.Sprint(ret)
+	mod := math.Mod(ret, step)
+	return fmt.Sprint(ret - mod)
 }
 
-func genRangeInt(from, to int64) string {
+func genRangeInt(from, to, step int64) string {
 	diff := to - from
 	ret := from + rand.Int63n(diff)
-	return strconv.FormatInt(ret, 10)
+	mod := ret % step
+	return strconv.FormatInt(ret-mod, 10)
 }
 
 func generatorValue(ctx context.Context, key string, value definition.Value) (string, error) {
