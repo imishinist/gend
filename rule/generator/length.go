@@ -20,7 +20,8 @@ func Length(length definition.Length) (int, error) {
 		return lengthOccurrence(length), nil
 	}
 
-	return 0, ErrLengthDefinition
+	// default => static: 1
+	return 1, nil
 }
 
 func lengthOccurrence(length definition.Length) int {
