@@ -3,6 +3,7 @@ package generator
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/imishinist/gend/rule/definition"
 )
@@ -62,9 +63,9 @@ func (c *cache) Register(key string, value IGenerator) {
 	(*c)[key] = value
 }
 
-func (c *cache) Generate(ctx context.Context, key string, env map[string]interface{}) (string, error) {
+func (c *cache) Generate(ctx context.Context, key string, env map[string]interface{}, out io.Writer) error {
 	if gen, ok := (*c)[key]; ok {
-		return gen.Generate(ctx, env)
+		return gen.Generate(ctx, env, out)
 	}
 	panic("not registered")
 }

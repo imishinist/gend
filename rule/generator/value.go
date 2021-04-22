@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -38,11 +39,12 @@ func Value(ctx context.Context, gtx *Context, rule definition.Rule) (string, err
 	}
 
 	if value.Generator != nil {
-		res, err := gtx.VGenerator.Generate(ctx, rule.Key, nil)
+		buf := new(bytes.Buffer)
+		err := gtx.VGenerator.Generate(ctx, rule.Key, nil, buf)
 		if err != nil {
 			return "", err
 		}
-		return res, nil
+		return buf.String(), nil
 	}
 
 	return "", ErrValueDefinition

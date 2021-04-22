@@ -1,8 +1,8 @@
 package generator
 
 import (
-	"bytes"
 	"context"
+	"io"
 	"text/template"
 
 	"github.com/imishinist/gend/funcs"
@@ -25,12 +25,11 @@ func NewTemplates(key string, templatestr string) (*Templates, error) {
 	}, nil
 }
 
-func (t *Templates) Generate(ctx context.Context, env map[string]interface{}) (string, error) {
-	buf := new(bytes.Buffer)
-	if err := t.inner.Execute(buf, env); err != nil {
-		return "", err
+func (t *Templates) Generate(ctx context.Context, env map[string]interface{}, out io.Writer) error {
+	if err := t.inner.Execute(out, env); err != nil {
+		return err
 	}
-	return buf.String(), nil
+	return nil
 }
 
 func (t *Templates) Close() error {

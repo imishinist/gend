@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -21,32 +20,8 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func main() {
-	filename := flag.String("conf", "config.yml", "")
-	flag.Parse()
-
-	file, err := os.Open(*filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	input, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var conf definition.Config
-	if err := yaml.Unmarshal(input, &conf); err != nil {
-		log.Fatal(err)
-	}
-	ctx := context.Background()
-	gtx, err := generator.Build(conf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer gtx.Close()
-
-	for _, rule := range conf.Rules {
+func do(ctx context.Context, gtx *generator.Context, config *definition.Config) {
+	for _, rule := range config.Rules {
 		target := targetdef.NewTarget(rule.Key)
 
 		length, err := generator.Length(rule.Length)
@@ -55,18 +30,70 @@ func main() {
 			continue
 		}
 		for i := 0; i < length; i++ {
-			value, err := generator.Value(ctx, gtx, rule)
+			res, err := generator.Value(ctx, gtx, rule)
 			if err != nil {
 				log.Println(rule.Key, err)
 				continue
 			}
-			target.Add(value)
+			target.Add(res)
 		}
-		res, err := generator.Generator(ctx, gtx, target, rule)
-		if err != nil {
+		if err := generator.Generator(ctx, gtx, target, rule, os.Stdout); err != nil {
 			log.Println(rule.Key, err)
 			continue
 		}
-		fmt.Print(res)
+	}
+}
+
+// iff rule has same key, simply override it
+func mergeConfigRule(conf ...*definition.Config) *definition.Config {
+	rules := make([]definition.Rule, 0, 10)
+	for _, c := range conf {
+		rules = append(rules, c.Rules...)
+	}
+	return &definition.Config{Rules: rules}
+}
+
+func readConfig(filename string) (*definition.Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	input, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var conf definition.Config
+	if err := yaml.Unmarshal(input, &conf); err != nil {
+		return nil, err
+	}
+	return &conf, nil
+}
+
+func main() {
+	num := flag.Int("n", 1, "")
+	flag.Parse()
+
+	confs := make([]*definition.Config, 0, flag.NArg())
+	for _, filename := range flag.Args() {
+		conf, err := readConfig(filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		confs = append(confs, conf)
+	}
+
+	conf := mergeConfigRule(confs...)
+
+	ctx := context.Background()
+	gtx, err := generator.Build(*conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer gtx.Close()
+
+	for i := 0; i < *num; i++ {
+		do(ctx, gtx, conf)
 	}
 }

@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,32 +11,30 @@ import (
 )
 
 type IGenerator interface {
-	Generate(ctx context.Context, env map[string]interface{}) (string, error)
+	Generate(ctx context.Context, env map[string]interface{}, out io.Writer) error
 	io.Closer
 }
 
-func Generator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, rule definition.Rule) (string, error) {
+func Generator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, rule definition.Rule, out io.Writer) error {
 	if rule.Use != nil && !Use(*rule.Use) {
-		return "", errors.New("don't use")
+		return errors.New("don't use")
 	}
 	if rule.Generator != nil {
-		res, err := gtx.Generator.Generate(ctx, rule.Key, map[string]interface{}{
+		if err := gtx.Generator.Generate(ctx, rule.Key, map[string]interface{}{
 			"key":    target.Key,
 			"values": target.Values,
-		})
-		if err != nil {
-			return "", err
+		}, out); err != nil {
+			return err
 		}
-		return res, nil
+		return nil
 	}
 
 	// default: json encoder
 	tmp := map[string][]string{
 		target.Key: target.Values,
 	}
-	buf := new(bytes.Buffer)
-	if err := json.NewEncoder(buf).Encode(tmp); err != nil {
-		return "", err
+	if err := json.NewEncoder(out).Encode(tmp); err != nil {
+		return err
 	}
-	return buf.String(), nil
+	return nil
 }

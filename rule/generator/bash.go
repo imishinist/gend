@@ -41,7 +41,7 @@ func (b *Bash) Run(ctx context.Context, env map[string]string) *exec.Cmd {
 	return cmd
 }
 
-func (b *Bash) Generate(ctx context.Context, env map[string]interface{}) (string, error) {
+func (b *Bash) Generate(ctx context.Context, env map[string]interface{}, out io.Writer) error {
 	senv := make(map[string]string)
 	for k, v := range env {
 		// TODO: implement
@@ -53,12 +53,11 @@ func (b *Bash) Generate(ctx context.Context, env map[string]interface{}) (string
 		}
 	}
 	cmd := b.Run(ctx, senv)
-
-	output, err := cmd.Output()
-	if err != nil {
-		return "", ErrRunCommand
+	cmd.Stdout = out
+	if err := cmd.Run(); err != nil {
+		return ErrRunCommand
 	}
-	return string(output), nil
+	return nil
 }
 
 func (b *Bash) Close() error {
