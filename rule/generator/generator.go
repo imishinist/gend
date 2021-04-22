@@ -5,45 +5,30 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
-	"text/template"
+	"io"
 
-	"github.com/imishinist/gend/funcs"
 	"github.com/imishinist/gend/rule/definition"
 	targetdef "github.com/imishinist/gend/target/definition"
 )
 
-func Generator(ctx context.Context, target *targetdef.TargetKV, rule definition.Rule) (string, error) {
+type IGenerator interface {
+	Generate(ctx context.Context, env map[string]interface{}) (string, error)
+	io.Closer
+}
+
+func Generator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, rule definition.Rule) (string, error) {
 	if rule.Use != nil && !Use(*rule.Use) {
 		return "", errors.New("don't use")
 	}
 	if rule.Generator != nil {
-		if rule.Generator.Bash != "" {
-			cmd, clean := runAsBash(ctx, rule.Generator.Bash, map[string]string{
-				"key":    target.Key,
-				"values": strings.Join(target.Values, ","),
-			})
-			defer clean()
-			output, err := cmd.Output()
-			if err != nil {
-				return "", ErrRunCommand
-			}
-			return string(output), nil
+		res, err := gtx.Generator.Generate(ctx, rule.Key, map[string]interface{}{
+			"key":    target.Key,
+			"values": target.Values,
+		})
+		if err != nil {
+			return "", err
 		}
-		if rule.Generator.Templates != "" {
-			t, err := template.New(rule.Key).Funcs(funcs.Map).Parse(rule.Generator.Templates)
-			if err != nil {
-				return "", ErrTemplateInvalid
-			}
-			buf := new(bytes.Buffer)
-			if err := t.Execute(buf, map[string]interface{}{
-				"key":    target.Key,
-				"values": target.Values,
-			}); err != nil {
-				return "", ErrTemplateInvalid
-			}
-			return buf.String(), nil
-		}
+		return res, nil
 	}
 
 	// default: json encoder

@@ -1,15 +1,11 @@
 package generator
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -23,9 +19,11 @@ var (
 
 	ErrRunCommand      = errors.New("run command failure")
 	ErrTemplateInvalid = errors.New("template is invalid")
+
+	ErrGenerator = errors.New("generator is invalid")
 )
 
-func Value(ctx context.Context, rule definition.Rule) (string, error) {
+func Value(ctx context.Context, gtx *Context, rule definition.Rule) (string, error) {
 	value := rule.Value
 	if value.Static != "" {
 		return value.Static, nil
@@ -40,11 +38,11 @@ func Value(ctx context.Context, rule definition.Rule) (string, error) {
 	}
 
 	if value.Generator != nil {
-		ret, err := generatorValue(ctx, rule.Key, rule.Value)
+		res, err := gtx.VGenerator.Generate(ctx, rule.Key, nil)
 		if err != nil {
 			return "", err
 		}
-		return ret, nil
+		return res, nil
 	}
 
 	return "", ErrValueDefinition
@@ -108,36 +106,14 @@ func genRangeInt(from, to, step int64) string {
 	return strconv.FormatInt(ret-mod, 10)
 }
 
-func generatorValue(ctx context.Context, key string, value definition.Value) (string, error) {
-	if value.Generator.Bash != "" {
-		command, clean := runAsBash(ctx, value.Generator.Bash, nil)
-		defer clean()
-
-		command.Stdin = bytes.NewBufferString(key)
-		output, err := command.Output()
+func buildValueGenerator(key string, gen *definition.ValueGenerator) (IGenerator, error) {
+	if gen.Bash != "" {
+		bash, err := NewBash(gen.Bash)
 		if err != nil {
-			return "", ErrRunCommand
+			return nil, err
 		}
-		return string(output), nil
+		return bash, nil
 	}
 
-	return "", ErrCommandDefinition
-}
-
-func runAsBash(ctx context.Context, cmd string, variables map[string]string) (*exec.Cmd, func()) {
-	temp, err := os.CreateTemp(os.TempDir(), "")
-	if err != nil {
-		panic(err)
-	}
-	defer temp.Close()
-
-	if variables != nil {
-		for k, v := range variables {
-			io.WriteString(temp, fmt.Sprintf("%s=\"%s\"\n", k, v))
-		}
-	}
-	io.WriteString(temp, cmd)
-	return exec.CommandContext(ctx, "/bin/bash", temp.Name()), func() {
-		os.Remove(temp.Name())
-	}
+	return nil, ErrCommandDefinition
 }

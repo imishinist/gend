@@ -40,6 +40,11 @@ func main() {
 		log.Fatal(err)
 	}
 	ctx := context.Background()
+	gtx, err := generator.Build(conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer gtx.Close()
 
 	for _, rule := range conf.Rules {
 		target := targetdef.NewTarget(rule.Key)
@@ -50,14 +55,14 @@ func main() {
 			continue
 		}
 		for i := 0; i < length; i++ {
-			value, err := generator.Value(ctx, rule)
+			value, err := generator.Value(ctx, gtx, rule)
 			if err != nil {
 				log.Println(rule.Key, err)
 				continue
 			}
 			target.Add(value)
 		}
-		res, err := generator.Generator(ctx, target, rule)
+		res, err := generator.Generator(ctx, gtx, target, rule)
 		if err != nil {
 			log.Println(rule.Key, err)
 			continue
