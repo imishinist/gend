@@ -15,12 +15,12 @@ type IGenerator interface {
 	io.Closer
 }
 
-func Generator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, rule definition.Rule, out io.Writer) error {
+func KVGenerator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, rule definition.Rule, out io.Writer) error {
 	if rule.Use != nil && !Use(*rule.Use) {
 		return errors.New("don't use")
 	}
 	if rule.Generator != nil {
-		if err := gtx.Generator.Generate(ctx, rule.Key, map[string]interface{}{
+		if err := gtx.KVGenerator.Generate(ctx, rule.Key, map[string]interface{}{
 			"key":    target.Key,
 			"values": target.Values,
 		}, out); err != nil {
@@ -34,6 +34,15 @@ func Generator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, ru
 		target.Key: target.Values,
 	}
 	if err := json.NewEncoder(out).Encode(tmp); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Generator(ctx context.Context, gtx *Context, items []string, out io.Writer) error {
+	if err := gtx.Generator.Generate(ctx, "main", map[string]interface{}{
+		"items": items,
+	}, out); err != nil {
 		return err
 	}
 	return nil

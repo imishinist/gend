@@ -9,18 +9,21 @@ import (
 )
 
 type Context struct {
-	VGenerator cache
-	Generator  cache
+	VGenerator  cache
+	KVGenerator cache
+	Generator   cache
 }
 
 func (c *Context) Close() error {
 	c.VGenerator.Close()
+	c.KVGenerator.Close()
 	c.Generator.Close()
 	return nil
 }
 
 func Build(conf definition.Config) (*Context, error) {
 	vg := make(cache)
+	kvg := make(cache)
 	g := make(cache)
 
 	for _, rule := range conf.Rules {
@@ -40,20 +43,42 @@ func Build(conf definition.Config) (*Context, error) {
 			if err != nil {
 				return nil, err
 			}
-			g.Register(rule.Key, bash)
+			kvg.Register(rule.Key, bash)
 		} else if rule.Generator.Templates != "" {
 			t, err := NewTemplates(rule.Key, rule.Generator.Templates)
 			if err != nil {
 				return nil, err
 			}
-			g.Register(rule.Key, t)
+			kvg.Register(rule.Key, t)
 		} else {
 			return nil, fmt.Errorf("empty error: %w", ErrGenerator)
 		}
 	}
+
+	key := "main"
+	if conf.Generator != nil {
+		if conf.Generator.Bash != "" {
+			bash, err := NewBash(conf.Generator.Bash)
+			if err != nil {
+				return nil, err
+			}
+			g.Register(key, bash)
+		} else if conf.Generator.Templates != "" {
+			t, err := NewTemplates(key, conf.Generator.Templates)
+			if err != nil {
+				return nil, err
+			}
+			g.Register(key, t)
+		}
+	} else {
+		j := NewJoin("items", "\n")
+		g.Register(key, j)
+	}
+
 	return &Context{
-		VGenerator: vg,
-		Generator:  g,
+		VGenerator:  vg,
+		KVGenerator: kvg,
+		Generator:   g,
 	}, nil
 }
 
