@@ -12,6 +12,8 @@ type Context struct {
 	VGenerator  cache
 	KVGenerator cache
 	Generator   cache
+
+	variables Variables
 }
 
 func (c *Context) Close() error {
@@ -21,7 +23,11 @@ func (c *Context) Close() error {
 	return nil
 }
 
-func Build(conf definition.Config) (*Context, error) {
+func (c *Context) GetVariables() map[string]interface{} {
+	return c.variables.ForTemplate()
+}
+
+func Build(conf definition.Config, variables []Variable) (*Context, error) {
 	vg := make(cache)
 	kvg := make(cache)
 	g := make(cache)
@@ -79,6 +85,7 @@ func Build(conf definition.Config) (*Context, error) {
 		VGenerator:  vg,
 		KVGenerator: kvg,
 		Generator:   g,
+		variables:   Variables(variables),
 	}, nil
 }
 

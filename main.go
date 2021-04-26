@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -82,8 +83,28 @@ func readConfig(filename string) (*definition.Config, error) {
 	return &conf, nil
 }
 
+func parseVars(varsStr string) []generator.Variable {
+	ret := make([]generator.Variable, 0)
+	vs := strings.Split(varsStr, ",")
+	for _, v := range vs {
+		trimed := strings.TrimSpace(v)
+		tmp := strings.SplitN(trimed, "=", 2)
+		if len(tmp) < 2 {
+			continue
+		}
+		name := tmp[0]
+		value := tmp[1]
+		ret = append(ret, generator.Variable{
+			Name:  name,
+			Value: value,
+		})
+	}
+	return ret
+}
+
 func main() {
 	num := flag.Int("n", 1, "")
+	varsStr := flag.String("vars", "", "")
 	flag.Parse()
 
 	confs := make([]*definition.Config, 0, flag.NArg())
@@ -96,9 +117,10 @@ func main() {
 	}
 
 	conf := mergeConfigRule(confs...)
+	vars := parseVars(*varsStr)
 
 	ctx := context.Background()
-	gtx, err := generator.Build(*conf)
+	gtx, err := generator.Build(*conf, vars)
 	if err != nil {
 		log.Fatal(err)
 	}

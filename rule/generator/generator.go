@@ -20,10 +20,10 @@ func KVGenerator(ctx context.Context, gtx *Context, target *targetdef.TargetKV, 
 		return errors.New("don't use")
 	}
 	if rule.Generator != nil {
-		if err := gtx.KVGenerator.Generate(ctx, rule.Key, map[string]interface{}{
-			"key":    target.Key,
-			"values": target.Values,
-		}, out); err != nil {
+		vars := gtx.GetVariables()
+		vars["key"] = target.Key
+		vars["values"] = target.Values
+		if err := gtx.KVGenerator.Generate(ctx, rule.Key, vars, out); err != nil {
 			return err
 		}
 		return nil
