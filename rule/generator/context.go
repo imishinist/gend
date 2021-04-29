@@ -62,20 +62,18 @@ func Build(conf definition.Config, variables []Variable) (*Context, error) {
 	}
 
 	key := "main"
-	if conf.Generator != nil {
-		if conf.Generator.Bash != "" {
-			bash, err := NewBash(conf.Generator.Bash)
-			if err != nil {
-				return nil, err
-			}
-			g.Register(key, bash)
-		} else if conf.Generator.Templates != "" {
-			t, err := NewTemplates(key, conf.Generator.Templates)
-			if err != nil {
-				return nil, err
-			}
-			g.Register(key, t)
+	if conf.Generator != nil && conf.Generator.Bash != "" {
+		bash, err := NewBash(conf.Generator.Bash)
+		if err != nil {
+			return nil, err
 		}
+		g.Register(key, bash)
+	} else if conf.Generator != nil && conf.Generator.Templates != "" {
+		t, err := NewTemplates(key, conf.Generator.Templates)
+		if err != nil {
+			return nil, err
+		}
+		g.Register(key, t)
 	} else {
 		j := NewJoin("items", "\n")
 		g.Register(key, j)
